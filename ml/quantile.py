@@ -30,7 +30,7 @@ from modules.ml_dataset import load_dataset
 
 warnings.filterwarnings('ignore')
 RDLogger.DisableLog('rdApp.*')
-logger = logging.getLogger(__name__)
+logging.basicConfig(format='', level=logging.INFO)
 
 
 def load_args():
@@ -58,7 +58,7 @@ def load_args():
 
 def main():
     args = load_args()
-    logger.info(args)
+    logging.info(args)
 
     if args.tg_num is None:
         save_path = f'saved_result/{args.assay_name}'
@@ -94,7 +94,7 @@ def main():
         'fit_intercept': [True, False]
     }
     params = ParameterGrid(params_dict)
-    logger.info(f'The number of hyperparameter combinations:{len(params)}')
+    logging.info(f'The number of hyperparameter combinations:{len(params)}')
     
     result = {'model': {}, 'mae': {}, 'mse': {}, 'rmse': {}, 'r2': {}}
     kf = KFold(n_splits = 5, shuffle = True, random_state = args.random_state)
@@ -128,10 +128,10 @@ def main():
     best_mse = np.mean(result['mse'][best_model_key])
     best_rmse = np.mean(result['rmse'][best_model_key])
     
-    logger.info(f'Best Model Parameters: {best_params}')    
-    logger.info(f'Log-scaled Validation MAE: {best_mae:.5f}')    
-    logger.info(f'Log-scaled Validation MSE: {best_mse:.5f}')    
-    logger.info(f'Log-scaled Validation RMSE: {best_rmse:.5f}')    
+    logging.info(f'Best Model Parameters: {best_params}')    
+    logging.info(f'Log-scaled Validation MAE: {best_mae:.5f}')    
+    logging.info(f'Log-scaled Validation MSE: {best_mse:.5f}')    
+    logging.info(f'Log-scaled Validation RMSE: {best_rmse:.5f}')    
     
     final_model = QuantileRegressor(**best_params)
     final_model.fit(x_tr, y_tr)
@@ -167,15 +167,15 @@ def main():
         'origin_pred': pred_origin
     }
     
-    logger.info(f"Log-scaled Test MAE: {log_test_mae:.5f}")
-    logger.info(f"Log-scaled Test MSE: {log_test_mse:.5f}")
-    logger.info(f"Log-scaled Test RMSE: {log_test_rmse:.5f}")
-    logger.info(f"Log-scaled Test R2: {log_test_r2:.5f}")
+    logging.info(f"Log-scaled Test MAE: {log_test_mae:.5f}")
+    logging.info(f"Log-scaled Test MSE: {log_test_mse:.5f}")
+    logging.info(f"Log-scaled Test RMSE: {log_test_rmse:.5f}")
+    logging.info(f"Log-scaled Test R2: {log_test_r2:.5f}")
     
-    logger.info(f"Original Scale Test MAE: {origin_test_mae:.5f}")
-    logger.info(f"Original Scale Test MSE: {origin_test_mse:.5f}")
-    logger.info(f"Original Scale Test RMSE: {origin_test_rmse:.5f}")
-    logger.info(f"Original Scale Test R2: {origin_test_r2:.5f}")
+    logging.info(f"Original Scale Test MAE: {origin_test_mae:.5f}")
+    logging.info(f"Original Scale Test MSE: {origin_test_mse:.5f}")
+    logging.info(f"Original Scale Test RMSE: {origin_test_rmse:.5f}")
+    logging.info(f"Original Scale Test R2: {origin_test_r2:.5f}")
     
     checkpoints = {
         'params': final_model.get_params(),
@@ -186,7 +186,7 @@ def main():
     file_name = f'best_quantile_{args.fp_type}_feat_sel_{args.use_feat_sel}.pkl'
     save_results(checkpoints, path = save_path, file_name = file_name)
     
-    logger.info(f"Best model saved with MAE: {origin_test_mae:.5f}")
+    logging.info(f"Best model saved with MAE: {origin_test_mae:.5f}")
 
 
 if __name__ == '__main__':
