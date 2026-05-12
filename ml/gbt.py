@@ -185,7 +185,7 @@ def main():
         'pred_result': pred_result
     }
     
-    file_name = f'best_gbt_{args.fp_type}_feat_sel_{args.use_feat_sel}.json'
+    file_name = f'best_gbt_{args.fp_type}_feat_sel_{args.use_feat_sel}.pkl'
     save_results(checkpoints, path = save_path, file_name = file_name)
     
     logging.info(f"Best model saved with MAE: {origin_test_mae:.5f}")

@@ -123,7 +123,7 @@ def main():
             result['rmse'][model_key].append(np.sqrt(mean_squared_error(fold_val_y, pred)))
             result['r2'][model_key].append(r2_score(fold_val_y, pred))
         
-        save_results(result, path = save_path, file_name = f'gbt_{args.fp_type}_feat_sel_{args.use_feat_sel}.pkl')
+        save_results(result, path = save_path, file_name = f'xgb_{args.fp_type}_feat_sel_{args.use_feat_sel}.pkl')
             
     best_model_key, best_params, best_r2 = find_best_model(result, metric = 'mae')
     
@@ -186,7 +186,7 @@ def main():
         'pred_result': pred_result
     }
     
-    file_name = f'best_gbt_{args.fp_type}_feat_sel_{args.use_feat_sel}.json'
+    file_name = f'best_xgb_{args.fp_type}_feat_sel_{args.use_feat_sel}.pkl'
     save_results(checkpoints, path = save_path, file_name = file_name)
     
     logging.info(f"Best model saved with MAE: {origin_test_mae:.5f}")
