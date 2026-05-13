@@ -155,7 +155,7 @@ def main():
     })
     
     logging.info('')
-    logging.info('Model: {}'.format(args.model))
+    logging.info('Model: {}'.format(args.gnn_type))
     logging.info('TG: {}'.format(args.tg_num))
 
     logging.info('Val MAE: {:.2f} ({:.2f})'.format(np.mean(val_mae_list), np.std(val_mae_list)))
