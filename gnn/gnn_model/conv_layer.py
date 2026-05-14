@@ -1,10 +1,13 @@
+import sys
+sys.path.append('../../')
+
 import torch
 from torch import nn
 import torch.nn.functional as F
 from torch_geometric.utils import degree
 from torch_geometric.nn import MessagePassing
 
-from .encoder import BondEncoder
+from modules.encoder import BondEncoder
 
 
 class GCNConv(MessagePassing):

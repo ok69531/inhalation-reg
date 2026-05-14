@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../../')
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -6,7 +9,7 @@ from torch_geometric.utils import to_dense_adj
 from torch_geometric.nn.glob import global_mean_pool, global_add_pool, global_max_pool
 
 from .conv_layer import GINConv, GCNConv
-from .encoder import AtomEncoder
+from modules.encoder import AtomEncoder
 
 import numpy as np
 from sklearn.metrics import (
