@@ -127,7 +127,7 @@ def main():
     torch.save(checkpoints, save_path)
     
     logging.info('')
-    logging.info('Model: {}'.format(args.model))
+    logging.info('Model: {}'.format(args.gnn_type))
     logging.info('TG: {}'.format(args.tg_num))
 
     logging.info('')
