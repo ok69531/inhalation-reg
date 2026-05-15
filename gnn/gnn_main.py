@@ -83,7 +83,7 @@ def main():
     
     criterion = nn.L1Loss(reduction = 'mean')
     output_dim = train_dataset.num_classes
-    model = GraphNeuralNetwork(output_dim, args)
+    model = GraphNeuralNetwork(output_dim, args).to(device)
     if args.optimizer == 'adam':
         optimizer = Adam(model.parameters(), lr = args.lr, weight_decay = args.weight_decay)
     elif args.optimizer == 'sgd':
