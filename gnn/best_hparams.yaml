@@ -1,0 +1,20 @@
+403:
+  epochs: 100
+  gnn_type: gin
+  hidden_dim: 128
+  lr: 0.001
+  num_layers: 5
+  optimizer: adam
+  readout: max
+  skip_con: all
+  weight_decay: 0.0
+412:
+  epochs: 300
+  gnn_type: gin
+  hidden_dim: 64
+  lr: 0.001
+  num_layers: 5
+  optimizer: adam
+  readout: max
+  skip_con: null
+  weight_decay: 1.0e-05
