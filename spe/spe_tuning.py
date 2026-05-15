@@ -50,7 +50,7 @@ sweep_configuration = {
     'name': 'sweep',
     'metric': {'goal': 'minimize', 'name': 'val mae'},
     'parameters':{
-        'n_epochs': {'values': [300, 500, 1000]},
+        'n_epochs': {'values': [100, 300, 500]},
         'lr': {'values': [0.005, 0.001]},
         'weight_decay': {'values': [0, 1e-5, 3e-6]},
         
