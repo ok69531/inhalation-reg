@@ -2,6 +2,7 @@ import sys
 sys.path.append('../')
 
 import os
+import yaml
 import logging
 import argparse
 import warnings
@@ -31,20 +32,28 @@ logging.info(f'Cuda Available: {torch.cuda.is_available()}, {device}')
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--gnn_type', type = str, default = 'gcn', help = 'gcn, gin')
+parser.add_argument('--gnn_type', type = str, default = None, help = 'gcn, gin')
 parser.add_argument('--tg_num', type = int, default = 403, help = '403, 412')
 parser.add_argument('--train_frac', type = float, default = 0.8)
 parser.add_argument('--val_frac', type = float, default = 0.1)
 parser.add_argument('--batch_size', type = int, default = 128)
-parser.add_argument('--readout', type = str, default = 'mean')
-parser.add_argument('--hidden_dim', type = int, default = 128)
-parser.add_argument('--num_layers', type = int, default = 3)
+parser.add_argument('--readout', type = str, default = None)
+parser.add_argument('--hidden_dim', type = int, default = None)
+parser.add_argument('--num_layers', type = int, default = None)
 parser.add_argument('--skip_con', type = str, default = None, help = 'None, all, last')
-parser.add_argument('--lr', type = float, default = 0.001)
-parser.add_argument('--epochs', type = int, default = 100)
-parser.add_argument('--optimizer', type = str, default = 'adam')
-parser.add_argument('--weight_decay', type = float, default = 0)
+parser.add_argument('--lr', type = float, default = None)
+parser.add_argument('--epochs', type = int, default = None)
+parser.add_argument('--optimizer', type = str, default = None)
+parser.add_argument('--weight_decay', type = float, default = None)
 parser.add_argument('--seed', type = int, default = 42)
+
+args, unknown = parser.parse_known_args()
+
+with open('best_hparams.yaml', 'r') as f:
+    hparams = yaml.safe_load(f)
+hparams = hparams[args.tg_num]
+parser.set_defaults(**hparams)
+
 try:
     args = parser.parse_args()
 except:
