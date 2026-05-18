@@ -65,7 +65,7 @@ sweep_configuration = {
         'pooling': {'values': ['avg', 'max', 'sum']},
         'num_layers': {'values': [2, 4, 6]},
         'hidden_feat': {'values': [32, 64, 128, 256]},
-        'out_feat': {'values': [32, 64, 128, 256]},
+        'out_feat': {'values': [32, 64, 128]},
     }
 }
 sweep_id = wandb.sweep(sweep_configuration, project = f'TG{args.tg_num}-REG-KAGNN')
