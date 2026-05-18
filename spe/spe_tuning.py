@@ -97,8 +97,8 @@ def main():
         num_val = len(train_dataset) - num_train
         train, val = random_split(train_dataset, lengths = [num_train, num_val], generator=torch.Generator().manual_seed(seed))
 
-        set_seed(seed)
-        train_loader = DataLoader(train, batch_size = args.batch_size, shuffle = True, generator=torch.Generator().manual_seed(seed), drop_last=True)
+        set_seed(args.seed)
+        train_loader = DataLoader(train, batch_size = args.batch_size, shuffle = True, generator=torch.Generator().manual_seed(args.seed), drop_last=True)
         val_loader = DataLoader(val, batch_size = args.batch_size, shuffle = False)
         # test_loader = DataLoader(test_dataset, batch_size = args.batch_size, shuffle = False)
         
