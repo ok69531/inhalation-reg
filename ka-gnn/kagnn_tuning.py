@@ -64,6 +64,8 @@ sweep_configuration = {
         'LR': {'values': [0.001, 0.0005, 0.0001]},
         'pooling': {'values': ['avg', 'max', 'sum']},
         'num_layers': {'values': [2, 4, 6]},
+        'hidden_feat': {'values': [32, 64, 128, 256]},
+        'out_feat': {'values': [32, 64, 128, 256]},
     }
 }
 sweep_id = wandb.sweep(sweep_configuration, project = f'TG{args.tg_num}-REG-KAGNN')
@@ -76,14 +78,18 @@ def main():
     args.LR = wandb.config.LR
     args.pooling = wandb.config.pooling
     args.num_layers = wandb.config.num_layers
+    args.hidden_feat = wandb.config.hidden_feat
+    args.out_feat = wandb.config.out_feat
     
-    target_dim = 1
     encoder_atom = args.encoder_atom
     encoder_bond = args.encoder_bond
 
     encode_dim = [0,0]
     encode_dim[0] = 92
     encode_dim[1] = 21
+    
+    inpuit_dim = encode_dim[0] + encode_dim[1]
+    target_dim = 1
     
     datafile = f'tg{args.tg_num}'
     creat_data(datafile, encoder_atom, encoder_bond, args.batch_size)
@@ -108,8 +114,10 @@ def main():
         grid_feat = args.grid_feat
         num_layers = args.num_layers
         pooling = args.pooling
-        model = KA_GNN(in_feat=encode_dim[0]+encode_dim[1], hidden_feat=64, out_feat=32, out=target_dim, 
-                    grid_feat=grid_feat, num_layers=num_layers, pooling = pooling, use_bias=True)
+        hidden_feat = args.hidden_feat
+        out_feat = args.out_feat
+        model = KA_GNN(in_feat = inpuit_dim, hidden_feat = hidden_feat, out_feat = out_feat, out=target_dim, 
+                       grid_feat = grid_feat, num_layers = num_layers, pooling = pooling, use_bias=True)
 
         total_params = sum(p.numel() for p in model.parameters())
         logging.info(f"Total parameters: {total_params}")

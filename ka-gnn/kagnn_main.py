@@ -66,13 +66,15 @@ def main():
         args = parser.parse_args([])
     logging.info(args)
     
-    target_dim = 1
     encoder_atom = args.encoder_atom
     encoder_bond = args.encoder_bond
 
     encode_dim = [0,0]
     encode_dim[0] = 92
     encode_dim[1] = 21
+    
+    target_dim = 1
+    inpuit_dim = encode_dim[0] + encode_dim[1]
     
     datafile = f'tg{args.tg_num}'
     creat_data(datafile, encoder_atom, encoder_bond, args.batch_size)
@@ -91,8 +93,10 @@ def main():
     grid_feat = args.grid_feat
     num_layers = args.num_layers
     pooling = args.pooling
-    model = KA_GNN(in_feat=encode_dim[0]+encode_dim[1], hidden_feat=64, out_feat=32, out=target_dim, 
-                grid_feat=grid_feat, num_layers=num_layers, pooling = pooling, use_bias=True)
+    hidden_feat = args.hidden_feat
+    out_feat = args.out_feat
+    model = KA_GNN(in_feat = inpuit_dim, hidden_feat = hidden_feat, out_feat = out_feat, out=target_dim, 
+                    grid_feat = grid_feat, num_layers = num_layers, pooling = pooling, use_bias=True)
 
     total_params = sum(p.numel() for p in model.parameters())
     logging.info(f"Total parameters: {total_params}")
