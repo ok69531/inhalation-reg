@@ -117,7 +117,10 @@ def _preprocess_split_df(split_df, encoder_atom, encoder_bond, split_name):
 def creat_data(datafile, encoder_atom, encoder_bond, batch_size, test_ratio = 0.2, random_state = 42):
     ''' split 정보 추가 '''
 
-    datasets = datafile
+    if datafile == 'tg403':
+        datasets = datafile
+    elif datafile == 'tg412':
+        datasets = 'tg412_413'
 
     directory_path = 'dataset/processed/'
     os.makedirs(directory_path, exist_ok=True)
