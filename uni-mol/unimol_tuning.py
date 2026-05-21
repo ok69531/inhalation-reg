@@ -58,9 +58,9 @@ sweep_configuration = {
     'name': 'sweep',
     'metric': {'goal': 'minimize', 'name': 'val mae'},
     'parameters':{
-        'epochs': {'values': [40, 60, 80, 100]},
+        'epochs': {'values': [40, 60]},
         'lr': {'values': [5e-5, 8e-5, 1e-4, 4e-4, 5e-4]},
-        'batch_size': {'values': [32, 64, 128]},
+        'batch_size': {'values': [32, 128]},
         'dropout': {'values': [0.0, 0.1, 0.2, 0.5]},
         'warmup_ratio': {'values': [0.0, 0.06, 0.1] },
         'weight_decay': {'values': [0, 1e-4]}
@@ -131,7 +131,7 @@ def main():
         
         for epoch in range(1, args.epochs + 1):
             train_loss = unimol_train(model, optimizer, scheduler, device, train_loader, criterion)
-            val_loss, val_metric, _ = unimol_evaluation(model, device, train_loader)
+            val_loss, val_metric, _ = unimol_evaluation(model, device, val_loader)
             
             logging.info('=== epoch: {}'.format(epoch))
             logging.info('Train MAE: {:.5f}, MSE: {:.5f}, RMSE: {:.5f}, R2: {:.5f}'.format(
