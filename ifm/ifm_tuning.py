@@ -57,7 +57,7 @@ try:
     args = parser.parse_args()
 except:
     args = parser.parse_args([])
-args.fp_type = 'maccs'
+
 
 wandb.login(key = open('../wandb_key.txt', 'r').readline())
 sweep_configuration = {
