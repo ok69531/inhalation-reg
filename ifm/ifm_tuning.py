@@ -65,6 +65,7 @@ sweep_configuration = {
     'name': 'sweep',
     'metric': {'goal': 'minimize', 'name': 'val mae'},
     'parameters':{
+        'fp_type': {'values': [args.fp_type]},
         'k': {'values': [4, 8, 16, 32]}, 
         'sigma': {'values': [1, 3, 6]}, 
         
@@ -86,6 +87,7 @@ sweep_id = wandb.sweep(sweep_configuration, project = f'TG{args.tg_num}-REG-IFM'
 def main():
     wandb.init()
     
+    args.fp_type = wandb.config.fp_type
     args.k = wandb.config.k
     args.sigma = wandb.config.sigma
     args.epochs = wandb.config.epochs
