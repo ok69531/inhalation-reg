@@ -10,8 +10,8 @@ def load_spe_args():
     parser.add_argument('--tg_num', default = None, type = int, help = '403, 412')
     # parser.add_argument('--expose_type', default = None, type = str, help = 'mgkg, inhale')
     parser.add_argument('--test_size', default = 0.2, type = float)
-    parser.add_argument('--random_state', default = 42, type = int)
-    parser.add_argument('--tier', default = 1, type = int)
+    # parser.add_argument('--random_state', default = 42, type = int)
+    # parser.add_argument('--tier', default = 1, type = int)
     parser.add_argument('--batch_size', default = 128, type = int)
     parser.add_argument('--seed', default = 42, type = int)
     

@@ -1,0 +1,14 @@
+403:
+  LR: 0.0005
+  NUM_EPOCHS: 500
+  hidden_feat: 64
+  num_layers: 2
+  out_feat: 64
+  pooling: max
+412:
+  LR: 0.0001
+  NUM_EPOCHS: 500
+  hidden_feat: 128
+  num_layers: 2
+  out_feat: 128
+  pooling: max

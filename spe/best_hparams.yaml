@@ -1,0 +1,18 @@
+403:
+  lr: 0.005
+  n_base_layers: 4
+  n_epochs: 500
+  n_mlp_layers: 4
+  n_phi_layers: 8
+  n_psi_layers: 2
+  node_emb_dims: 32
+  weight_decay: 3.0e-06
+412:
+  lr: 0.005
+  n_base_layers: 4
+  n_epochs: 500
+  n_mlp_layers: 4
+  n_phi_layers: 2
+  n_psi_layers: 3
+  node_emb_dims: 64
+  weight_decay: 3.0e-06

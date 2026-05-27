@@ -2,6 +2,7 @@ import sys
 sys.path.append('../')
 
 import os
+import yaml
 import logging
 import warnings
 from functools import partial
@@ -42,6 +43,10 @@ logging.info(f'Cuda Available: {torch.cuda.is_available()}, {device}')
 
 args = load_spe_args()
 logging.info(args)
+with open('best_hparams.yaml', 'r') as f:
+    hparams = yaml.safe_load(f)
+hparams = hparams[args.tg_num]
+vars(args).update(hparams)
 
 
 def main():
