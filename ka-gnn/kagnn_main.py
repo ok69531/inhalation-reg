@@ -96,7 +96,7 @@ def main():
     hidden_feat = args.hidden_feat
     out_feat = args.out_feat
     model = KA_GNN(in_feat = inpuit_dim, hidden_feat = hidden_feat, out_feat = out_feat, out=target_dim, 
-                    grid_feat = grid_feat, num_layers = num_layers, pooling = pooling, use_bias=True)
+                    grid_feat = grid_feat, num_layers = num_layers, pooling = pooling, use_bias=True).to(device)
 
     total_params = sum(p.numel() for p in model.parameters())
     logging.info(f"Total parameters: {total_params}")
