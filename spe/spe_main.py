@@ -96,7 +96,7 @@ def main():
             best_val_rmse = val_rmse
             best_val_r2 = val_r2
             
-            _, test_metric, test_pred = evaluation(model, device, test_loader, criterion)
+            _, test_metric, test_pred = evaluation(model, test_loader, criterion, device)
             final_test_mae = test_metric['log_mae']
             final_test_mse = test_metric['log_mse']
             final_test_rmse = test_metric['log_rmse']
