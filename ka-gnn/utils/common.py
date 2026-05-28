@@ -220,9 +220,11 @@ def kagnn_train(model, device, train_loader, optimizer, criterion):
 
         origin_y = data[0].to(device)
         y = torch.log10(origin_y)
-        x = update_node_features(data[1]).to(device) 
+        x = update_node_features(data[1]).to(device)
+        batch = data[1].batch.to(device)
+        edge_index = data[1].edge_index.to(device)
 
-        out = model(data[1].edge_index, x, data[1].batch, x.size(0)).view(-1)
+        out = model(edge_index, x, batch, x.size(0)).view(-1)
         # out = model(g, x)
 
         y = y.to(dtype=out.dtype)
@@ -247,7 +249,10 @@ def kagnn_eval(model, device, test_loader):
         batch_y = torch.log10(origin_batch_y)
         
         x = update_node_features(data[1]).to(device)
-        output = model(data[1].edge_index, x, data[1].batch, x.size(0)).view(-1)
+        batch = data[1].batch.to(device)
+        edge_index = data[1].edge_index.to(device)
+
+        output = model(edge_index, x, batch, x.size(0)).view(-1)
         
         y.append(batch_y)
         pred.append(output)

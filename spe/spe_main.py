@@ -86,7 +86,7 @@ def main():
 
     for epoch in range(1, args.n_epochs + 1):
         train_loss = training(model, train_loader, optimizer, scheduler, criterion, device)
-        val_loss, val_metrics, _ = evaluation(model, train_loader, criterion, device, args)
+        val_loss, val_metrics, _ = evaluation(model, train_loader, criterion, device)
         val_mae = val_metrics['log_mae']; val_mse = val_metrics['log_mse']
         val_rmse = val_metrics['log_rmse']; val_r2 = val_metrics['log_r2']
         

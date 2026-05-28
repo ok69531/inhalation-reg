@@ -144,7 +144,7 @@ def training(model, loader, optimizer, scheduler, criterion, device):
 
 
 @torch.no_grad()
-def evaluation(model, loader, criterion, device, args, original_scale = False):
+def evaluation(model, loader, criterion, device):
     model.eval()
     
     total_loss = 0
