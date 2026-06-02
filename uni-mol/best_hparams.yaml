@@ -1,0 +1,14 @@
+403:
+  batch_size: 32
+  dropout: 0.1
+  epochs: 40
+  lr: 0.0004
+  warmup_ratio: 0.06
+  weight_decay: 0.0
+412:
+  batch_size: 32
+  dropout: 0.1
+  epochs: 60
+  lr: 0.0005
+  warmup_ratio: 0.1
+  weight_decay: 0.0
