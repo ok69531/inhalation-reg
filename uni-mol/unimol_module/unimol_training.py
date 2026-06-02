@@ -32,6 +32,8 @@ def unimol_train(model, optimizer, scheduler, device, loader, criterion):
     
     return np.average(loss_list)        
 
+
+@torch.no_grad()
 def unimol_evaluation(model, device, loader):
     model.eval()
     
