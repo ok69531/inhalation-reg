@@ -49,7 +49,7 @@ args, unknown = parser.parse_known_args()
 
 with open('best_hparams.yaml', 'r') as f:
     hparams = yaml.safe_load(f)
-hparams = hparams[args.tg_num][args.gnn_type]
+hparams = hparams[args.tg_num]
 parser.set_defaults(**hparams)
 
 try:
