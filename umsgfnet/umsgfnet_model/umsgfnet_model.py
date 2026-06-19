@@ -1,3 +1,6 @@
+import sys
+sys.path.append('../')
+
 import re
 import ast
 import math
@@ -10,12 +13,11 @@ from torch.nn import Parameter
 import torch.nn.functional as F
 from torch_geometric.nn.models import MLP
 
-from fast_kan import FastKAN as KAN
+from .fast_kan import FastKAN as KAN
+from umsgfnet_module.featurization import BatchMolGraph
 
-from featurization import BatchMolGraph
 
 # ---------------------------------------------------------------------------------
-# 动态Tanh：保留你原始实现（若无 LayerNorm2d，可直接这样使用）
 class DynamicTanh(nn.Module):
     def __init__(self, normalized_shape, channels_last, alpha_init_value=0.5):
         super().__init__()
@@ -37,6 +39,7 @@ class DynamicTanh(nn.Module):
     def extra_repr(self):
         return f"normalized_shape={self.normalized_shape}, alpha_init_value={self.alpha_init_value}, channels_last={self.channels_last}"
 
+
 def convert_ln_to_dyt(module):
     module_output = module
     if isinstance(module, nn.LayerNorm):
@@ -46,8 +49,9 @@ def convert_ln_to_dyt(module):
     del module
     return module_output
 
+
 # --------------------------------------------------------------------
-# 一些通用组件
+
 
 def index_select_ND(source: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
     index_size = index.size()
@@ -57,12 +61,14 @@ def index_select_ND(source: torch.Tensor, index: torch.Tensor) -> torch.Tensor:
     target = target.view(final_size)
     return target
 
+
 class SimpleDecoder(nn.Module):
     def __init__(self, hidden_size):
         super(SimpleDecoder, self).__init__()
         self.decoder_fc = nn.Linear(hidden_size, hidden_size)
     def forward(self, latent):
         return self.decoder_fc(latent)
+
 
 class GraphAutoencoder(nn.Module):
     def __init__(self, encoder, decoder, device):
@@ -79,6 +85,7 @@ class GraphAutoencoder(nn.Module):
         f_atoms = f_atoms.to(self.device)
         return F.mse_loss(reconstructed_graph, f_atoms)
 
+
 class ContrastiveLoss(nn.Module):
     def __init__(self, temperature=0.07):
         super(ContrastiveLoss, self).__init__()
@@ -88,6 +95,7 @@ class ContrastiveLoss(nn.Module):
         labels = torch.arange(z1.size(0)).to(z1.device)
         loss = F.cross_entropy(sim / self.temperature, labels)
         return loss
+
 
 class MultiModalPool(nn.Module):
     def __init__(self, hidden_size, pool_type='mean'):
@@ -104,11 +112,11 @@ class MultiModalPool(nn.Module):
         else:
             raise ValueError("Invalid pool_type. Choose from 'mean', 'sum', or 'max'.")
 
+
 # --------------------------------------------------------------------
-# 编码器
+
 
 class UMSGFNetEncoder(nn.Module):
-    """双通道消息传递分子编码器（支持 return_atom_hiddens）。"""
     def __init__(self, atom_fdim, bond_fdim, hidden_size, depth, device):
         super(UMSGFNetEncoder, self).__init__()
         self.atom_fdim = atom_fdim
@@ -179,6 +187,7 @@ class UMSGFNetEncoder(nn.Module):
             return mol_vecs, atom_hiddens, a_scope
         return mol_vecs
 
+
 class MemoryModule(nn.Module):
     def __init__(self, memory_size, hidden_size):
         super(MemoryModule, self).__init__()
@@ -190,6 +199,7 @@ class MemoryModule(nn.Module):
         attention_weights = F.softmax(self.attention(query), dim=-1)
         memory_output = torch.matmul(attention_weights, self.memory)
         return memory_output
+
 
 class UMSGFNetEncoderWithMemory(nn.Module):
     def __init__(self, atom_fdim, bond_fdim, hidden_size, depth, device, memory_size=128):
@@ -207,6 +217,7 @@ class UMSGFNetEncoderWithMemory(nn.Module):
             memory_output = self.memory_module(ligand_x)
             combined_output = ligand_x + memory_output
             return combined_output
+
 
 class WeightFusion(nn.Module):
     def __init__(self, feat_views, feat_dim, bias: bool = True, device=None, dtype=None) -> None:
@@ -229,7 +240,9 @@ class WeightFusion(nn.Module):
     def forward(self, inputs: Tensor) -> Tensor:
         return sum([inputs[i] * weight for i, weight in enumerate(self.weight[0][0])]) + self.bias
 
-# ------------------- 更鲁棒的 SMILES 规范化工具（模型内部兜底） -------------------
+
+# --------------------------------------
+
 def _maybe_strip_bytes_literal(s: str) -> str:
     if isinstance(s, (bytes, bytearray)):
         try:
@@ -241,6 +254,7 @@ def _maybe_strip_bytes_literal(s: str) -> str:
         if m:
             return m.group(1)
     return s
+
 
 def _maybe_parse_list_string(s: str):
     if not isinstance(s, str):
@@ -254,11 +268,8 @@ def _maybe_parse_list_string(s: str):
             return s
     return s
 
+
 def _normalize_smis(smis):
-    """
-    把任意形态的 batch.smi 统一成 ["CCO", ...] 的“纯字符串列表”。
-    处理：'CCO' / ['C','C','O'] / "['CCO']" / "b'CCO'" / numpy/tensor.tolist() 等。
-    """
     if smis is None:
         return []
     if hasattr(smis, "tolist"):
@@ -297,17 +308,22 @@ def _normalize_smis(smis):
         else:
             return [str(parsed)]
     return [str(smis)]
+
 # -------------------------------------------------------------------
 
 class UMSGFNet(nn.Module):
-    def __init__(self, data_name, atom_fdim, bond_fdim, fp_fdim,
-                 hidden_size=256, depth=5, device='cpu', out_dim=2, memory_size=128):
+    def __init__(self, args, atom_fdim, bond_fdim, fp_fdim, device='cpu', out_dim=2, memory_size=128):
         super(UMSGFNet, self).__init__()
-        self.data_name = data_name
+        
+        self.tg_num = args.tg_num
         self.device = device
+        
         self.atom_fdim = atom_fdim
         self.bond_fdim = bond_fdim
         self.fp_fdim = fp_fdim
+        
+        hidden_size = args.hidden_dim
+        depth = args.depth
 
         self.encoder = UMSGFNetEncoderWithMemory(self.atom_fdim, self.bond_fdim, hidden_size, depth, device, memory_size)
 
@@ -324,16 +340,23 @@ class UMSGFNet(nn.Module):
         self.mlp = nn.Linear(hidden_size, out_dim)
         self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=4, batch_first=False)
 
-        # 可选自监督组件
         self.decoder = SimpleDecoder(hidden_size)
         self.graph_autoencoder = GraphAutoencoder(self.encoder, self.decoder, device=self.device)
         self.contrastive_loss = ContrastiveLoss(temperature=0.07)
         self.multimodal_pool = MultiModalPool(hidden_size)
 
-    def forward(self, batch, self_supervised=False):
+    # @property
+    # def split_tag(self):
+    #     """
+    #     model.train()이면 'train',
+    #     model.eval()이면 'test'
+    #     """
+    #     return "train" if self.training else "test"
+    
+    def forward(self, batch, split_tag, self_supervised=False):
         smis = _normalize_smis(getattr(batch, "smi", None))
         mol_batch = BatchMolGraph(smis, atom_fdim=self.atom_fdim, bond_fdim=self.bond_fdim,
-                                  fp_fdim=self.fp_fdim, data_name=self.data_name)
+                                  fp_fdim=self.fp_fdim, tg_num = self.tg_num, split_tag = split_tag)
 
         ligand_x = self.encoder.forward(mol_batch)                         # [B, H]
         fp_x = self.mlp_fp(mol_batch.fp_x.to(self.device).to(torch.float32))  # [B, H]
@@ -381,36 +404,30 @@ class UMSGFNet(nn.Module):
     #     return logits, atom_hiddens, a_scope, fp_x
 
     def forward_with_explanations(self, batch):
-        # 你原有的打包/构图代码...
         smis = _normalize_smis(getattr(batch, "smi", None))
         mol_batch = BatchMolGraph(smis, atom_fdim=self.atom_fdim, bond_fdim=self.bond_fdim,
-                                  fp_fdim=self.fp_fdim, data_name=self.data_name)
+                                  fp_fdim=self.fp_fdim, tg_num = self.tg_num, split_tag = self.split_tag)
 
-        # 编码器返回：分子级表示、原子隐藏向量与范围
         ligand_x, atom_hiddens, a_scope = self.encoder.forward(
             mol_batch, return_atom_hiddens=True
         )  # ligand_x: [B,H]; atom_hiddens: [N_atoms,H]
 
-        # ========= 关键改动：同时拿“原始指纹”与“MLP 后指纹” =========
         fp_raw = mol_batch.fp_x.to(self.device).to(torch.float32)  # [B, 6338]（原始拼接）
         fp_x = self.mlp_fp(fp_raw)  # [B, H]    （供模型内部使用）
 
-        # 注意力 + 融合（保持你原实现不变）
         attn_output, _ = self.attention(ligand_x.unsqueeze(0), fp_x.unsqueeze(0), fp_x.unsqueeze(0))
         ligand_x = attn_output.squeeze(0)
         ligand_x = self.feature_fusion(torch.stack([ligand_x, fp_x], dim=0))
         logits = self.mlp(ligand_x)
 
-        # ========= 返回 fp_raw 而不是 fp_x =========
         return logits, atom_hiddens, a_scope, fp_raw
 
     @torch.no_grad()
     def logits_from_atom_hiddens(self, atom_hiddens: torch.Tensor, a_scope, fp_raw: torch.Tensor):
         """
-        根据被遮挡后的 atom_hiddens + 原始指纹 fp_raw，复现前向后半段，得到 logits。
         - atom_hiddens: [N_atoms_total, H]
         - a_scope:      list[(start, size)]
-        - fp_raw:       [B, 6338] 原始指纹（会在此处过 mlp_fp → [B,H]）
+        - fp_raw:       [B, 6338]
         """
         device = atom_hiddens.device
         H = atom_hiddens.size(-1)
@@ -433,5 +450,3 @@ class UMSGFNet(nn.Module):
         ligand_x = self.feature_fusion(torch.stack([ligand_x, fp_x], dim=0))
         logits = self.mlp(ligand_x)
         return logits
-
-

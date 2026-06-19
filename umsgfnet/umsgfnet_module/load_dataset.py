@@ -13,7 +13,16 @@ from rdkit.Chem import AllChem
 from torch_geometric.data import Data
 from torch_geometric.data import InMemoryDataset
 
-from featurization import atom_features, bond_features, get_fp_feature, motif_decomp
+from .featurization import (
+    atom_features, 
+    bond_features, 
+    get_fp_feature, 
+    motif_decomp, 
+    get_atom_fdim, 
+    get_bond_fdim
+)
+
+from sklearn.model_selection import train_test_split
 
 
 class HiMolGraph:
@@ -110,8 +119,8 @@ class HiMolGraph:
             motif_edge_attr = []
             for idx, (i, j) in enumerate(edges_list):
                 if f'{i}_{j}' in list(breaks_bonds.keys()):
-                    motif_edge_attr.append(motif_x[breaks_bonds[f'{i}_{j}'][0]] + edge_features_list[idx][89:])
-                    motif_edge_attr.append(motif_x[breaks_bonds[f'{i}_{j}'][1]] + edge_features_list[idx][89:])
+                    motif_edge_attr.append(motif_x[breaks_bonds[f'{i}_{j}'][0]] + edge_features_list[idx][get_atom_fdim()::])
+                    motif_edge_attr.append(motif_x[breaks_bonds[f'{i}_{j}'][1]] + edge_features_list[idx][get_atom_fdim()::])
 
                     b1 = self.n_bonds
                     b2 = b1 + 1
@@ -155,7 +164,7 @@ class HiMolGraph:
             print("edge_attr_nosuper shape:", edge_attr_nosuper.shape)
             print("motif_edge_attr shape:", motif_edge_attr.shape)
             print("super_edge_attr shape:", super_edge_attr.shape)
-            target_size = 100  # 目标列数
+            target_size = get_bond_fdim()  # 目标列数
 
             # 对 edge_attr_nosuper 进行填充
             if edge_attr_nosuper.size(1) < target_size:
@@ -198,7 +207,7 @@ class HiMolGraph:
 
 
 # input_path = '../../dataset/raw/tg403.xlsx'
-def _load_bace_dataset(input_path):
+def _load_dataset(input_path):
     """
 
     :param input_path:
@@ -206,20 +215,27 @@ def _load_bace_dataset(input_path):
     containing indices for each of the 3 folds, np.array containing the
     labels
     """
+    
     input_df = pd.read_excel(input_path)
-    smiles_list = input_df['smiles']
-    rdkit_mol_objs_list = [AllChem.MolFromSmiles(s) for s in smiles_list]
-    labels = input_df['value']
+    
+    rdkit_mol_objs = [Chem.MolFromSmiles(s) for s in input_df.smiles]
+    mols_na_idx = [i for i in range(len(rdkit_mol_objs)) if rdkit_mol_objs[i] is None]
+    rdkit_mol_objs = list(filter(None, rdkit_mol_objs))
+    
+    df = input_df.drop(mols_na_idx).reset_index(drop = True)
+    smiles_list = df['smiles'].tolist()
+    labels = df['value'].tolist()
+    
     # there are no nans
     # folds = input_df['Model']
     # folds = folds.replace('Train', 0)  # 0 -> train
     # folds = folds.replace('Valid', 1)  # 1 -> valid
     # folds = folds.replace('Test', 2)  # 2 -> test
-    assert len(smiles_list) == len(rdkit_mol_objs_list)
+    assert len(smiles_list) == len(rdkit_mol_objs)
     assert len(smiles_list) == len(labels)
     # assert len(smiles_list) == len(folds)
 
-    return smiles_list, rdkit_mol_objs_list, labels.values
+    return smiles_list, rdkit_mol_objs, labels
     # return smiles_list, rdkit_mol_objs_list, folds.values, labels.values
 
 
@@ -266,248 +282,123 @@ def mol_to_graph_data_obj_simple(mol, smi=None):
 class MoleculeDataset(InMemoryDataset):
     def __init__(self,
                  root,
+                 tg_num,
+                 split = None,
                  transform=None,
                  pre_transform=None,
                  pre_filter=None,
-                 dataset='bace',
                  empty=False):
 
-        self.dataset = dataset
         self.root = root
+        self.tg = tg_num
+        self.split = split
+
+        if self.tg is None:
+            self.data_root = 'TC_REG'
+        elif self.tg:
+            if self.tg == 403: self.data_root = f'tg{tg_num}'
+            elif self.tg == 412: self.data_root = f'tg{tg_num}'
+        
         super(MoleculeDataset, self).__init__(root, transform, pre_transform, pre_filter)
         self.transform, self.pre_transform, self.pre_filter = transform, pre_transform, pre_filter
-
+        
         if not empty:
             self.data, self.slices = torch.load(self.processed_paths[0])
 
-    def get(self, idx):
-        data = Data()
-        for key in self.data.keys():
-            item, slices = self.data[key], self.slices[key]
-            if key == 'smi':
-                data[key] = item[slices[idx]:slices[idx + 1]]
-                continue
-            s = list(repeat(slice(None), item.dim()))
-            s[data.__cat_dim__(key, item)] = slice(slices[idx],
-                                                   slices[idx + 1])
-            data[key] = item[s]
-        return data
+    # def get(self, idx):
+    #     data = Data()
+    #     for key in self.data.keys():
+    #         item, slices = self.data[key], self.slices[key]
+    #         if key == 'smi':
+    #             data[key] = item[slices[idx]:slices[idx + 1]]
+    #             continue
+    #         s = list(repeat(slice(None), item.dim()))
+    #         s[data.__cat_dim__(key, item)] = slice(slices[idx],
+    #                                                slices[idx + 1])
+    #         data[key] = item[s]
+    #     return data
 
+    @property
+    def raw_dir(self):
+        return os.path.join(self.root, 'raw')
+    
     @property
     def raw_file_names(self):
-        file_name_list = os.listdir(self.raw_dir)
-        return file_name_list
-
+        if self.tg == 403: filename = f'tg{self.tg}.xlsx'
+        elif self.tg == 412: filename = f'tg{self.tg}_413.xlsx'
+        return [filename]
+    
+    @property
+    def processed_dir(self):
+        return os.path.join('dataset/processed', self.data_root)
+    
     @property
     def processed_file_names(self):
-        return 'geometric_data_processed.pt'
+        self.split_tag = 'full' if self.split is None else self.split
+        filename = f'TG{self.tg}_{self.split_tag}.pt'
+        return [filename]
+    
+    # @property
+    # def raw_file_names(self):
+    #     file_name_list = os.listdir(self.raw_dir)
+    #     return file_name_list
+
+    # @property
+    # def processed_file_names(self):
+    #     return 'geometric_data_processed.pt'
 
     def download(self):
         raise NotImplementedError('Must indicate valid location of raw data. '
                                   'No download allowed')
 
-    def process(self):
+
+    def split_dataset(self):
+        self.smiles_list, self.rdkit_mol_objs, self.labels = _load_dataset(self.raw_paths[0])
+        
+        tr_smiles_list, te_smiles_list, tr_mol_objs, te_mol_objs, tr_labels, te_labels \
+            = train_test_split(self.smiles_list, self.rdkit_mol_objs, self.labels, 
+                               test_size = 0.2, shuffle = True, random_state=42)
+        
+        if self.split == 'train':
+            self.smiles_list = tr_smiles_list
+            self.rdkit_mol_objs = tr_mol_objs
+            self.labels = tr_labels
+        elif self.split == 'test':
+            self.smiles_list = te_smiles_list
+            self.rdkit_mol_objs = te_mol_objs
+            self.labels = te_labels
+
+
+    def construct_graphs(self):
         data_smiles_list = []
         data_list = []
-
-        if self.dataset == 'bace':
-            smiles_list, rdkit_mol_objs, labels = _load_bace_dataset(self.raw_paths[0])
-            # smiles_list, rdkit_mol_objs, folds, labels = \
-            #     _load_bace_dataset(self.raw_paths[0])
-            himol_graph = {}
-            for i in range(len(smiles_list)):
-                print(i)
-                rdkit_mol = rdkit_mol_objs[i]
-                himol_graph[smiles_list[i]] = HiMolGraph(rdkit_mol)
-                data = mol_to_graph_data_obj_simple(rdkit_mol, smiles_list[i])
-                # manually add mol id
-                data.id = torch.tensor([i])  # id here is the index of the mol in
-                # the dataset
-                data.y = torch.tensor([labels[i]])
-                data.fold = torch.tensor([folds[i]])
-                data_list.append(data)
-                data_smiles_list.append(smiles_list[i])
-            out_path = os.path.dirname(self.raw_paths[0])
-            save_path = os.path.join(out_path, f'process_all.pkl')
-            pickle.dump(himol_graph, open(save_path, 'wb'))
-
-        elif self.dataset == 'bbbp':
-            smiles_list, rdkit_mol_objs, labels = \
-                _load_bbbp_dataset(self.raw_paths[0])
-            himol_graph = {}
-            for i in range(len(smiles_list)):
-                print(i)
-                rdkit_mol = rdkit_mol_objs[i]
-                if rdkit_mol != None:
-                    himol_graph[smiles_list[i]] = HiMolGraph(rdkit_mol)
-                    data = mol_to_graph_data_obj_simple(rdkit_mol, smiles_list[i])
-                    # manually add mol id
-                    data.id = torch.tensor(
-                        [i])  # id here is the index of the mol in
-                    # the dataset
-                    data.y = torch.tensor([labels[i]])
-                    data_list.append(data)
-                    data_smiles_list.append(smiles_list[i])
-            out_path = os.path.dirname(self.raw_paths[0])
-            save_path = os.path.join(out_path, f'process_all.pkl')
-            pickle.dump(himol_graph, open(save_path, 'wb'))
-
-
-        elif self.dataset == 'tox21':
-
-            smiles_list, rdkit_mol_objs, labels = _load_tox21_dataset(self.raw_paths[0])
-
-            himol_graph = {}
-
-            for i in range(len(smiles_list)):
-
-                print(i)
-
-                rdkit_mol = rdkit_mol_objs[i]
-
-                # 检查 rdkit_mol 是否为 None
-
-                if rdkit_mol is None:
-                    print(f"Warning: Failed to parse molecule for SMILES: {smiles_list[i]}")
-
-                    continue  # 跳过当前分子
-
-                # 获取分子的原子数量
-
-                n_atoms = rdkit_mol.GetNumAtoms()
-
-                # 如果原子数量为 1，跳过
-
-                if n_atoms == 1:
-                    continue
-
-                # 处理分子图
-
-                himol_graph[smiles_list[i]] = HiMolGraph(rdkit_mol)
-
-                # 转换为图数据对象
-
-                data = mol_to_graph_data_obj_simple(rdkit_mol, smiles_list[i])
-
-                # 手动添加分子 ID
-
-                data.id = torch.tensor([i])  # 数据集中的分子索引作为 ID
-
-                data.y = torch.tensor(labels[i, :])  # 分子标签
-
-                data_list.append(data)  # 将数据添加到数据列表
-
-                data_smiles_list.append(smiles_list[i])  # 将 SMILES 添加到 SMILES 列表
-
-            # 保存处理后的数据
-
-            out_path = os.path.dirname(self.raw_paths[0])
-
-            save_path = os.path.join(out_path, f'process_all.pkl')
-
-            pickle.dump(himol_graph, open(save_path, 'wb'))
-
-        elif self.dataset == 'sider':
-            smiles_list, rdkit_mol_objs, labels = \
-                _load_sider_dataset(self.raw_paths[0])
-            himol_graph = {}
-            for i in range(len(smiles_list)):
-                print(i)
-                rdkit_mol = rdkit_mol_objs[i]
-                himol_graph[smiles_list[i]] = HiMolGraph(rdkit_mol)
-                data = mol_to_graph_data_obj_simple(rdkit_mol, smiles_list[i])
-                # manually add mol id
-                data.id = torch.tensor(
-                    [i])  # id here is the index of the mol in
-                # the dataset
-                data.y = torch.tensor(labels[i, :])
-                data_list.append(data)
-                data_smiles_list.append(smiles_list[i])
-            out_path = os.path.dirname(self.raw_paths[0])
-            save_path = os.path.join(out_path, f'process_all.pkl')
-            pickle.dump(himol_graph, open(save_path, 'wb'))
-
-        elif self.dataset == 'clintox':
-            smiles_list, rdkit_mol_objs, labels = \
-                _load_clintox_dataset(self.raw_paths[0])
-            himol_graph = {}
-            for i in range(len(smiles_list)):
-                print(i)
-                rdkit_mol = rdkit_mol_objs[i]
-                if rdkit_mol != None:
-                    himol_graph[smiles_list[i]] = HiMolGraph(rdkit_mol)
-                    data = mol_to_graph_data_obj_simple(rdkit_mol, smiles_list[i])
-                    # manually add mol id
-                    data.id = torch.tensor(
-                        [i])  # id here is the index of the mol in
-                    # the dataset
-                    data.y = torch.tensor(labels[i, :])
-                    data_list.append(data)
-                    data_smiles_list.append(smiles_list[i])
-            out_path = os.path.dirname(self.raw_paths[0])
-            save_path = os.path.join(out_path, f'process_all.pkl')
-            pickle.dump(himol_graph, open(save_path, 'wb'))
-
-        elif self.dataset == 'esol':
-            smiles_list, rdkit_mol_objs, labels = \
-                _load_esol_dataset(self.raw_paths[0])
-            himol_graph = {}
-            for i in range(len(smiles_list)):
-                print(i)
-                rdkit_mol = rdkit_mol_objs[i]
-                himol_graph[smiles_list[i]] = HiMolGraph(rdkit_mol)
-                data = mol_to_graph_data_obj_simple(rdkit_mol, smiles_list[i])
-                # manually add mol id
-                data.id = torch.tensor([i])  # id here is the index of the mol in
-                # the dataset
-                data.y = torch.tensor([labels[i]])
-                data_list.append(data)
-                data_smiles_list.append(smiles_list[i])
-            out_path = os.path.dirname(self.raw_paths[0])
-            save_path = os.path.join(out_path, f'process_all.pkl')
-            pickle.dump(himol_graph, open(save_path, 'wb'))
-
-        elif self.dataset == 'freesolv':
-            smiles_list, rdkit_mol_objs, labels = \
-                _load_freesolv_dataset(self.raw_paths[0])
-            himol_graph = {}
-            for i in range(len(smiles_list)):
-                print(i)
-                rdkit_mol = rdkit_mol_objs[i]
-                himol_graph[smiles_list[i]] = HiMolGraph(rdkit_mol)
-                data = mol_to_graph_data_obj_simple(rdkit_mol, smiles_list[i])
-                # manually add mol id
-                data.id = torch.tensor([i])  # id here is the index of the mol in
-                # the dataset
-                data.y = torch.tensor([labels[i]])
-                data_list.append(data)
-                data_smiles_list.append(smiles_list[i])
-            out_path = os.path.dirname(self.raw_paths[0])
-            save_path = os.path.join(out_path, f'process_all.pkl')
-            pickle.dump(himol_graph, open(save_path, 'wb'))
-
-        elif self.dataset == 'lipophilicity':
-            smiles_list, rdkit_mol_objs, labels = \
-                _load_lipophilicity_dataset(self.raw_paths[0])
-            himol_graph = {}
-            for i in range(len(smiles_list)):
-                print(i)
-                rdkit_mol = rdkit_mol_objs[i]
-                himol_graph[smiles_list[i]] = HiMolGraph(rdkit_mol)
-                data = mol_to_graph_data_obj_simple(rdkit_mol, smiles_list[i])
-                # manually add mol id
-                data.id = torch.tensor([i])  # id here is the index of the mol in
-                # the dataset
-                data.y = torch.tensor([labels[i]])
-                data_list.append(data)
-                data_smiles_list.append(smiles_list[i])
-            out_path = os.path.dirname(self.raw_paths[0])
-            save_path = os.path.join(out_path, f'process_all.pkl')
-            pickle.dump(himol_graph, open(save_path, 'wb'))
-
-        else:
-            raise ValueError('Invalid dataset name')
-
+        # smiles_list, rdkit_mol_objs, folds, labels = \
+        #     _load_ataset(self.raw_paths[0])
+        himol_graph = {}
+        for i in range(len(self.smiles_list)):
+            print(i)
+            rdkit_mol = self.rdkit_mol_objs[i]
+            himol_graph[self.smiles_list[i]] = HiMolGraph(rdkit_mol)
+            data = mol_to_graph_data_obj_simple(rdkit_mol, self.smiles_list[i])
+            # manually add mol id
+            data.id = torch.tensor([i])  # id here is the index of the mol in
+            # the dataset
+            data.y = torch.tensor([np.log10(self.labels[i])])
+            data.origin_y = torch.tensor(self.labels[i])
+            data_list.append(data)
+            # data.fold = torch.tensor([folds[i]])
+            data_smiles_list.append(self.smiles_list[i])
+        out_path = os.path.dirname(self.processed_paths[0])
+        save_path = os.path.join(out_path, f'TG{self.tg}_{self.split_tag}.pkl')
+        pickle.dump(himol_graph, open(save_path, 'wb'))
+        
+        return data_list
+        
+    def process(self):
+        print(self.raw_paths)
+        self.split_dataset()
+        data_list = self.construct_graphs()
+        
         if self.pre_filter is not None:
             data_list = [data for data in data_list if self.pre_filter(data)]
 
@@ -515,11 +406,20 @@ class MoleculeDataset(InMemoryDataset):
             data_list = [self.pre_transform(data) for data in data_list]
 
         # write data_smiles_list in processed paths
-        data_smiles_series = pd.Series(data_smiles_list)
-        data_smiles_series.to_csv(os.path.join(self.processed_dir,
-                                               'smiles.csv'), index=False,
-                                  header=False)
+        # data_smiles_series = pd.Series(self.data_smiles_list)
+        # data_smiles_series.to_csv(os.path.join(self.processed_dir,
+        #                                        'smiles.csv'), index=False,
+        #                           header=False)
 
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
 
+
+if __name__ == '__main__':
+    dataset = MoleculeDataset(root = '../../dataset', tg_num = 403)
+    train_dataset = MoleculeDataset(root = '../../dataset', tg_num = 403, split = 'train')
+    test_dataset = MoleculeDataset(root = '../../dataset', tg_num = 403, split = 'test')
+    
+    dataset = MoleculeDataset(root = '../../dataset', tg_num = 412)
+    train_dataset = MoleculeDataset(root = '../../dataset', tg_num = 412, split = 'train')
+    test_dataset = MoleculeDataset(root = '../../dataset', tg_num = 412, split = 'test')

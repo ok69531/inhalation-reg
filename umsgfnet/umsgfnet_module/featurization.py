@@ -19,12 +19,12 @@ fdefName = os.path.join(RDConfig.RDDataDir, 'BaseFeatures.fdef')
 factory = ChemicalFeatures.BuildFeatureFactory(fdefName)
 
 
-ATOM_FDIM = 89
+# ATOM_FDIM = 91
 BOND_FDIM = 9
 FEATURES = {
     'atomic_num': [0, 1, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25, 26,
-                   27, 28, 29, 30, 31, 32, 33, 34, 35, 38, 39, 40, 42, 43, 46, 47, 48, 49, 50, 51, 53,
-                   56, 57, 60, 62, 63, 64, 66, 70, 78, 79, 80, 81, 82, 83, 88, 98],
+                   27, 28, 29, 30, 31, 32, 33, 34, 35, 38, 39, 40, 41, 42, 43, 46, 47, 48, 49, 50, 51, 53,
+                   56, 57, 58, 60, 62, 63, 64, 66, 70, 74, 78, 79, 80, 81, 82, 83, 88, 98],
     'degree': [0, 1, 2, 3, 4, 5, 6],
     'formal_charge': [-1, -2, 1, 2, 3, 0],
     'chiral_tag': [Chem.rdchem.ChiralType.CHI_UNSPECIFIED,
@@ -42,7 +42,15 @@ FEATURES = {
     'stereo': [Chem.rdchem.BondStereo.STEREONONE,
                Chem.rdchem.BondStereo.STEREOZ,
                Chem.rdchem.BondStereo.STEREOE], }
-
+ATOM_FDIM = (
+    len(FEATURES["atomic_num"])
+    + len(FEATURES["degree"])
+    + len(FEATURES["formal_charge"])
+    + len(FEATURES["chiral_tag"])
+    + len(FEATURES["num_Hs"])
+    + len(FEATURES["hybridization"])
+    + 1  # aromatic
+)
 
 def get_atom_fdim() -> int:
     return ATOM_FDIM
@@ -171,7 +179,7 @@ def motif_decomp(mol):
 
 
 class BatchMolGraph:
-    def __init__(self, smiles, atom_fdim, bond_fdim, fp_fdim, data_name):
+    def __init__(self, smiles, atom_fdim, bond_fdim, fp_fdim, tg_num, split_tag):
         import ast, re
 
         def _maybe_strip_bytes_literal(s):
@@ -276,7 +284,9 @@ class BatchMolGraph:
         fp_x_out = torch.empty((0, self.fp_fdim))
 
         # 注意：仍保留你的原始绝对路径；如需通用化可改为 os.path.join('dataset', data_name, 'raw', 'process_all.pkl')
-        data_file = open(f'./dataset/{data_name}/raw/process_all.pkl', 'rb')
+        data_file = open(f'./dataset/processed/tg{tg_num}/TG{tg_num}_{split_tag}.pkl', 'rb')
+        
+        # data_file = open(f'./dataset/{data_name}/raw/process_all.pkl', 'rb')
         mol_graphs = pickle.load(data_file)
         data_file.close()
 
@@ -306,10 +316,10 @@ class BatchMolGraph:
         self.max_num_bonds = max(1, max(len(in_bonds) for in_bonds in a2b))
 
         # 安全截断，与你原始逻辑一致
-        f_atoms = [row[:89] if len(row) > 89 else row for row in f_atoms]
+        f_atoms = [row[:atom_fdim] if len(row) > atom_fdim else row for row in f_atoms]
         self.f_atoms = torch.FloatTensor(f_atoms)
 
-        f_bonds = [row[:98] if len(row) > 98 else row for row in f_bonds]
+        f_bonds = [row[:bond_fdim] if len(row) > bond_fdim else row for row in f_bonds]
         self.f_bonds = torch.FloatTensor(f_bonds)
 
         self.a2b = torch.LongTensor([a2b[a] + [0] * (self.max_num_bonds - len(a2b[a])) for a in range(self.n_atoms)])
