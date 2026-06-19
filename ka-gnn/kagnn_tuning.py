@@ -145,6 +145,8 @@ def main():
                 best_val_r2 = val_r2
             else:
                 early_stop += 1
+            
+            if early_stop > 50: break
         
         val_mae_list.append(best_val_mae)
         val_mse_list.append(best_val_mse)
