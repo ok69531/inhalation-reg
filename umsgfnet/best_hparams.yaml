@@ -1,0 +1,18 @@
+403:
+  batch_size: 128
+  depth: 2
+  epochs: 300
+  hidden_dim: 256
+  huber_beta: 0.5
+  lr: 0.0005
+  weight_decay: 0.001
+  weight_power: 1
+412:
+  batch_size: 128
+  depth: 3
+  epochs: 300
+  hidden_dim: 256
+  huber_beta: 0.5
+  lr: 0.0001
+  weight_decay: 0.0
+  weight_power: 1
