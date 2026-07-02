@@ -376,37 +376,12 @@ class UMSGFNet(nn.Module):
             total_loss = reconstruction_loss + contrastive_loss
             return x, total_loss
 
-        return x
+        return x, ligand_x
 
-    # def forward_with_explanations(self, batch):
-    #     """
-    #     与 forward 等价，但额外返回：
-    #       logits: [B, out_dim]
-    #       atom_hiddens: [N_atoms_total, H]
-    #       a_scope: [(start, size), ...]
-    #       fp_x: [B, H]   <-- 为遮挡法准备
-    #     """
-    #     smis = _normalize_smis(getattr(batch, "smi", None))
-    #     mol_batch = BatchMolGraph(smis, atom_fdim=self.atom_fdim, bond_fdim=self.bond_fdim,
-    #                               fp_fdim=self.fp_fdim, data_name=self.data_name)
-    #
-    #     ligand_x, atom_hiddens, a_scope = self.encoder.forward(mol_batch, return_atom_hiddens=True)
-    #     fp_x = self.mlp_fp(mol_batch.fp_x.to(self.device).to(torch.float32))  # [B, H]
-    #
-    #
-    #     ligand_x_ = ligand_x.unsqueeze(0)
-    #     fp_x_ = fp_x.unsqueeze(0)
-    #     attn_output, _ = self.attention(ligand_x_, fp_x_, fp_x_)
-    #     ligand_x = attn_output.squeeze(0)
-    #
-    #     ligand_x = self.feature_fusion(torch.stack([ligand_x, fp_x], dim=0))
-    #     logits = self.mlp(ligand_x)
-    #     return logits, atom_hiddens, a_scope, fp_x
-
-    def forward_with_explanations(self, batch):
+    def forward_with_explanations(self, batch, split_tag):
         smis = _normalize_smis(getattr(batch, "smi", None))
         mol_batch = BatchMolGraph(smis, atom_fdim=self.atom_fdim, bond_fdim=self.bond_fdim,
-                                  fp_fdim=self.fp_fdim, tg_num = self.tg_num, split_tag = self.split_tag)
+                                  fp_fdim=self.fp_fdim, tg_num = self.tg_num, split_tag = split_tag)
 
         ligand_x, atom_hiddens, a_scope = self.encoder.forward(
             mol_batch, return_atom_hiddens=True

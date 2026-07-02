@@ -19,3 +19,5 @@ dataset
 tmp.py
 analysis
 pretrained_ckp.*
+explanation
+customer_product_predict

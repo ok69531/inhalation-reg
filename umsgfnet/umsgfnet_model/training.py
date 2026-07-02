@@ -38,7 +38,7 @@ def train_reg(args, model, device, loader, optimizer):
     total_loss = 0
     for step, batch in enumerate(tqdm(loader, desc="Iteration")):
         batch = batch.to(device)
-        pred = model(batch, 'train')
+        pred, _ = model(batch, 'train')
         y = batch.y.view(pred.shape).to(torch.float64)
         huber_loss = nn.SmoothL1Loss(beta=args.huber_beta)
         loss = huber_loss(pred, y)
@@ -59,7 +59,7 @@ def eval_reg(model, device, loader, split_tag):
 
     for _, batch in enumerate(loader):
         batch = batch.to(device)
-        scores = model(batch, split_tag)
+        scores, _ = model(batch, split_tag)
         
         y.append(batch.y)
         pred.append(scores.view(-1))
