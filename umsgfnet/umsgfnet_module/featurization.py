@@ -62,8 +62,11 @@ def get_bond_fdim(atom_messages: bool = False) -> int:
 
 def onek_encoding_unk(value: int, choices: List[int]) -> List[int]:
     encoding = [0] * len(choices)
-    index = choices.index(value)
-    encoding[index] = 1
+    # index = choices.index(value)
+    # encoding[index] = 1
+    if value in choices:
+        index = choices.index(value)
+        encoding[index] = 1
     return encoding
 
 
